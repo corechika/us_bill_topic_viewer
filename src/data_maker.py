@@ -4,6 +4,8 @@ import json
 import base64
 import sys
 import os
+import regex
+import subprocess
 
 sys.path.append('.')
 from settings import API_KEY
@@ -36,14 +38,15 @@ def _select_dataset_list_hash(datasets) -> list:
     if os.path.exists('./data/change_hash.txt'):
         # read previous hash
         with open('./data/change_hash.txt', 'r') as f:
-            hash_ = f.read()
-        hash_ = hash_.split('\n')
+            hash_ = f.read().split('\n')
         # save hash
         with open('./data/change_hash.txt', 'w') as f:
             f.write('\n'.join([d['dataset_hash'] for d in datasets]))
-        change_datasets = [d for d in datasets if d['dataset_hash'] in hash_]
+        change_datasets = [d for d in datasets if d['dataset_hash'] not in hash_]
         return change_datasets
     else:
+        with open('./data/change_hash.txt', 'w') as f:
+            f.write('\n'.join([d['dataset_hash'] for d in datasets]))
         return datasets
 
 def _collect_data(datasets) -> None:
@@ -57,10 +60,11 @@ def _collect_data(datasets) -> None:
         None
     """
     for d in datasets:
+        print(f'\rcollecting {d["session_title"]}')
         res = requests.get(f'https://api.legiscan.com/?key={API_KEY}&op=getDataset&id={d["session_id"]}&access_key={d["access_key"]}')
         data = json.loads(res.text)['dataset']
 
-        with open(f'./data/US_{d["session_id"]}_data.zip', 'wb') as f:
+        with open(f'./data/US_{d["session_id"]}_data_d{d["dataset_hash"]}.zip', 'wb') as f:
             f.write(base64.b64decode(data['zip']))
 
 def collect_latest_dataset_zip() -> None:
@@ -75,6 +79,9 @@ def collect_latest_dataset_zip() -> None:
     """
     datasets = _get_dataset_list()
     datasets = _select_dataset_list_hash(datasets)
+    if datasets == []:
+        print('No change files.')
+        sys.exit()
     _collect_data(datasets)
 
 def _unzip_data() -> None:
@@ -99,6 +106,7 @@ def _unzip_data() -> None:
 
 def main():
     collect_latest_dataset_zip()
+    _unzip_data()
 
 if __name__ == '__main__':
     main()
