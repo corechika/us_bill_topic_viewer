@@ -77,6 +77,26 @@ def collect_latest_dataset_zip() -> None:
     datasets = _select_dataset_list_hash(datasets)
     _collect_data(datasets)
 
+def _unzip_data() -> None:
+    """
+    unzip latest data and remove zip files
+
+    arguments:
+        None
+    return:
+        None
+    """
+    with open('./data/change_hash.txt', 'r') as f:
+        hash_ = f.read().split('\n')
+    zip_name_list = os.listdir('./data/')
+    pattern = regex.compile('('+'|'.join(hash_)+')', flags=regex.IGNORECASE)
+    for zip_name in zip_name_list:
+        if '.zip' in zip_name and regex.search(pattern, zip_name):
+            tmp = "`zipinfo -1 ./data/%s | grep 'US\/[0-9]\{4\}-[0-9]\{4\}_[0-9]\{3\}th_Congress\/bill'`" % (zip_name)
+            subprocess.run([f'unzip -o -d ./data ./data/{zip_name} {tmp}'], shell=True)
+    # delete zip files
+    subprocess.run(['rm -f ./data/US_*.zip'], shell=True)
+
 def main():
     collect_latest_dataset_zip()
 
