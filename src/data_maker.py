@@ -104,9 +104,34 @@ def _unzip_data() -> None:
     # delete zip files
     subprocess.run(['rm -f ./data/US_*.zip'], shell=True)
 
+def _collect_json2df() -> pd.DataFrame:
+    """
+    collecting bills
+
+    arguments:
+        None
+    return:
+        bill_df: pd.DataFrame
+            bill data frame
+    """
+    bill_df = pd.DataFrame()
+    congress_list = subprocess.run(["ls ./data/US | grep '[0-9]\{4\}-[0-9]\{4\}_[0-9]\{3\}th_Congress'"], shell=True, capture_output=True).stdout.decode().split()
+    for congress in congress_list:
+        print(f'\rprocessing {congress}', end='')
+        bill_files = os.listdir(f'./data/US/{congress}/bill')
+        for file in bill_files:
+            if '.json' in file:
+                with open(f'./data/US/{congress}/bill/{file}', 'r') as f:
+                    data = json.load(f)
+                bill_df = pd.concat([bill_df, pd.DataFrame(data).T])
+    print()
+    return bill_df
+
 def main():
     collect_latest_dataset_zip()
     _unzip_data()
+    us_congress = _collect_json2df()
+    us_congress.to_csv('./data/US_congress.csv', index=False)
 
 if __name__ == '__main__':
     main()
