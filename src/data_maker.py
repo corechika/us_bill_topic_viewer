@@ -1,11 +1,12 @@
-import pandas as pd
-import requests
-import json
 import base64
-import sys
+import json
 import os
-import regex
 import subprocess
+import sys
+
+import pandas as pd
+import regex
+import requests
 
 sys.path.append('.')
 from settings import API_KEY
@@ -131,6 +132,10 @@ def main():
     collect_latest_dataset_zip()
     _unzip_data()
     us_congress = _collect_json2df()
+
+    if os.path.exists('./data/US_congress.csv'):
+        tmp = pd.read_csv('./data/US_congress.csv')
+        us_congress = pd.concat([us_congress, tmp]).drop_duplicates(subset=['bill_id'])
     us_congress.to_csv('./data/US_congress.csv', index=False)
 
 if __name__ == '__main__':
