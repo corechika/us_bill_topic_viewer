@@ -1,0 +1,6 @@
+pandas
+python-dotenv
+regex
+requests
+dash
+fastapi
