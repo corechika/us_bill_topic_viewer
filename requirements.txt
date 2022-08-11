@@ -4,3 +4,5 @@ regex
 requests
 dash
 fastapi
+uvicorn
+gensim
