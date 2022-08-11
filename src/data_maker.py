@@ -3,13 +3,18 @@ import json
 import os
 import subprocess
 import sys
+from collections import defaultdict
 
 import pandas as pd
 import regex
 import requests
+import spacy
+
+nlp = spacy.load("en_core_web_sm")
 
 sys.path.append('.')
 from settings import API_KEY
+
 
 def _get_dataset_list() -> list:
     """
@@ -128,7 +133,65 @@ def _collect_json2df() -> pd.DataFrame:
     print()
     return bill_df
 
+def _extract_word(text) -> list:
+    """
+    extract the word to need
+
+    arguments:
+        text: str
+            congress's title and description text
+    return:
+        token_list: list
+            token's list
+    """
+    doc = nlp(text)
+    token_list = [token for token in doc if token.pos_ not in ['ADP', 'AUX', 'DET', 'NUM', 'PUNCT', 'SYM', 'SPACE']]
+
+    return token_list
+
+def extract_corpus() -> pd.DataFrame:
+    """
+    to extract Topic model's corpus
+
+    arguments:
+        None
+    return:
+        corpus: pd.DataFrame
+            corpus list in us congress
+    """
+    us_congress = pd.read_csv('./data/US_congress.csv')
+    us_congress = us_congress[(us_congress['description'].notnull()) & (us_congress['title'].notnull())]
+    
+    title_desc = us_congress['title'] + '. ' + us_congress['description']
+    us_congress['corpus'] = title_desc.apply(lambda x: _extract_word(x))
+
+    return us_congress
+
+def create_bill_list_4_sponsor(us_congress) -> None:
+    """
+    create bill list for each sponsor
+    ex) {9403: [202753, 203421, 196085]}
+
+    arguments:
+        us_congress: pd.DataFrame
+            bill data
+    return:
+        None
+    """
+    sponsors = us_congress['sponsors'].apply(lambda x: eval(x))
+    bill_sponsor_dict = defaultdict(list)
+
+    for bill_id, sponsor in zip(us_congress['bill_id'], sponsors):
+        for s in sponsor:
+            if s != []:
+                bill_sponsor_dict[s['people_id']].append(bill_id)
+    
+    with open('./data/sponsor_bill_dict.json', 'w') as f:
+        json.dump(bill_sponsor_dict, f, indent=2, ensure_ascii=False)
+
+
 def main():
+    # collect data
     collect_latest_dataset_zip()
     _unzip_data()
     us_congress = _collect_json2df()
@@ -137,6 +200,14 @@ def main():
         tmp = pd.read_csv('./data/US_congress.csv')
         us_congress = pd.concat([us_congress, tmp]).drop_duplicates(subset=['bill_id'])
     us_congress.to_csv('./data/US_congress.csv', index=False)
+
+    # extract corpus
+    us_congress = extract_corpus()
+
+    # bill list creation
+    create_bill_list_4_sponsor(us_congress)
+
+    # train Topic model
 
 if __name__ == '__main__':
     main()
