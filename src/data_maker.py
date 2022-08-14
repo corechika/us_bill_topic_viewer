@@ -110,7 +110,7 @@ def _unzip_data() -> None:
     # delete zip files
     subprocess.run(['rm -f ./data/US_*.zip'], shell=True)
 
-def _collect_json2df() -> pd.DataFrame:
+def _collect_json_2_df() -> pd.DataFrame:
     """
     collecting bills
 
@@ -194,7 +194,7 @@ def main():
     # collect data
     collect_latest_dataset_zip()
     _unzip_data()
-    us_congress = _collect_json2df()
+    us_congress = _collect_json_2_df()
 
     if os.path.exists('./data/US_congress.csv'):
         tmp = pd.read_csv('./data/US_congress.csv')
@@ -204,7 +204,7 @@ def main():
     # extract corpus
     us_congress = extract_corpus()
 
-    # bill list creation
+    # creation of bill list for each sponsor
     create_bill_list_4_sponsor(us_congress)
 
     # train Topic model
