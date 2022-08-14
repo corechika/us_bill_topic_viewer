@@ -9,6 +9,9 @@ import pandas as pd
 import regex
 import requests
 import spacy
+from gensim.corpora.dictionary import Dictionary
+from gensim.models.ldamodel import LdaModel
+from gensim.test.utils import datapath
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -189,6 +192,71 @@ def create_bill_list_4_sponsor(us_congress) -> None:
     with open('./data/sponsor_bill_dict.json', 'w') as f:
         json.dump(bill_sponsor_dict, f, indent=2, ensure_ascii=False)
 
+def _create_dictonary(corpus_text) -> Dictionary:
+    """
+    create gensim dictionary from bill text
+
+    arguments:
+        corpus_text: list
+            list of bill text
+    return:
+        bill_dictionary: Dictionary
+    """
+    bill_dictionary = Dictionary(corpus_text)
+    return bill_dictionary
+
+def _create_corpus(bill_dictionary, corpus_text) -> list:
+    """
+    translate text to gensim corpus
+
+    arguments:
+        bill_dictionary: Dictionary
+            created gensim dictionary
+        corpus_text: list
+            list of bill text
+    return:
+        bill_corpus: list
+            gensim corpus
+    """
+    bill_corpus = [bill_dictionary.doc2bow(text) for text in corpus_text]
+    return bill_corpus
+
+def _train_lda(bill_corpus) -> LdaModel:
+    """
+    training LDA model from gensim corpus
+
+    arguments:
+        bill_corpus: list
+            created gensim corpus
+    return:
+        lda: LdaModel
+    """
+    lda = LdaModel(bill_corpus, num_topics=5)
+    # Save model to disk.
+    temp_file = datapath("./data/model")
+    lda.save(temp_file)
+
+    return lda
+
+def create_lda_model(bill_text) -> LdaModel:
+    """
+    created LDA model from bill text
+
+    arguments:
+        bill_text: pd.Series
+            congress bill text
+    return:
+        lda: LdaModel
+    """
+    if type(bill_text[0]) == list:
+        corpus = bill_text.tolist()
+    else:
+        corpus = bill_text.apply(lambda x: eval(x)).tolist()
+    bill_dictionary = _create_dictonary(corpus)
+    train_corpus = _create_corpus(bill_dictionary, corpus)
+    lda_model = _train_lda(train_corpus)
+    
+    return lda_model
 
 def main():
     # collect data
@@ -208,6 +276,7 @@ def main():
     create_bill_list_4_sponsor(us_congress)
 
     # train Topic model
+    lda_model = create_lda_model(us_congress['corpus'])
 
 if __name__ == '__main__':
     main()
