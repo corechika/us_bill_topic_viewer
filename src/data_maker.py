@@ -258,6 +258,25 @@ def create_lda_model(bill_text) -> LdaModel:
     
     return lda_model
 
+def predict_topic(corpus_df, lda_model) -> pd.DataFrame:
+    """
+    prediction of doc topic
+
+    arguments:
+        corpus_df: pd.DataFrame
+        lda_model: LdaModel
+    return:
+        ratio_df: pd.DataFrame
+    """
+    ratio = []
+    corpus = corpus_df['corpus'].values
+    for c in corpus:
+        ratio.append([topic[1] for topic in list(lda_model[c])[0]])
+    ratio_df = pd.DataFrame(ratio, columns=['topic_0', 'topic_1', 'topic_2', 'topic_3', 'topic_4'])
+    ratio_df['bill_id'] = corpus_df['bill_id'].values
+
+    return ratio_df
+
 def main():
     # collect data
     collect_latest_dataset_zip()
@@ -277,6 +296,10 @@ def main():
 
     # train Topic model
     lda_model = create_lda_model(us_congress['corpus'])
+
+    # prediction of the topic ratio
+    ratio_df = predict_topic(us_congress[['bill_id', 'corpus']], lda_model)
+    ratio_df.to_csv('./data/US_congress_topic_ratio.csv', index=False)
 
 if __name__ == '__main__':
     main()
